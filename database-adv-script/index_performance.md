@@ -81,7 +81,7 @@ Execution Time: 0.275 ms
 Now, we create the index: `CREATE INDEX idx_properties_location ON Properties(location);` and run the same query again.
 
 **Execution Plan:**
-ndex Scan using idx_properties_location on properties (cost=0.14..8.16 rows=1 width=120) (actual time=0.033..0.035 rows=1 loops=1)
+index Scan using idx_properties_location on properties (cost=0.14..8.16 rows=1 width=120) (actual time=0.033..0.035 rows=1 loops=1)
 Index Cond: ((location)::text = 'City Center, Metropolis'::text)
 Planning Time: 0.250 ms
 Execution Time: 0.065 ms
