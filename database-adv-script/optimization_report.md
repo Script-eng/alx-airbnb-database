@@ -34,10 +34,17 @@ LEFT JOIN
 ORDER BY
     b.start_date;
 
-### The Inefficient Query
 
- ```sql
-    SELECT
+
+    An analysis using the database's EXPLAIN tool reveals several key inefficiencies:
+
+Inefficient LEFT JOIN: This forces the database to first join Bookings, Users, and Properties and then, for every single row of that result, perform a lookup in the Payments table. This is costly because it includes all pending and canceled bookings.
+Large Intermediate Result Set: The database must construct a large intermediate table in memory containing the combined data from the initial JOINs before the final LEFT JOIN is even considered.
+Lack of Early Filtering: The query has no WHERE clause, meaning the database cannot reduce the number of rows it needs to work on early in the execution plan.
+
+
+
+SELECT
     b.booking_id,
     b.status,
     b.start_date,
@@ -58,61 +65,12 @@ INNER JOIN
     Properties p ON b.property_id = p.property_id
 WHERE
     b.status = 'confirmed'
+    AND p.price_per_night > 100.00
 ORDER BY
     b.start_date;
 
 
-    -- --------------------------------------------------------------------
--- 2. Performance Analysis of the Initial Query
--- --------------------------------------------------------------------
---
--- Using EXPLAIN on the query above would reveal several potential inefficiencies,
--- especially as the tables grow.
---
---
--- Key Inefficiencies Identified:
---
--- a) Unnecessary LEFT JOIN:
---    The `LEFT JOIN` on the `Payments` table is the biggest issue. The query must
---    first process ALL rows from the `Bookings-Users-Properties` join result, and
---    THEN it attempts to find a match in the `Payments` table for each one.
---    This is expensive because it forces the database to keep all bookings
---    (pending, canceled, etc.) in memory during the join operation, even if they
---    will ultimately have NULL payment details.
---
--- b) Large, Unfiltered Intermediate Result Sets:
---    The query joins three large tables (`Bookings`, `Users`, `Properties`) before
---    considering the `Payments` table. Without any filtering (`WHERE` clause), the
---    database must construct a potentially massive intermediate result set before
---    the final `LEFT JOIN` is performed.
---
--- c) Ambiguous Intent:
---    The query's goal is too broad. Does the user really need to see `canceled`
---    bookings alongside payment details (which they will never have)? A more focused
---    query is almost always more performant.
---
--- --------------------------------------------------------------------
 
-
--- --------------------------------------------------------------------
--- 3. Refactored, High-Performance Query
--- --------------------------------------------------------------------
--- Objective: Retrieve details ONLY for confirmed, paid bookings.
---
--- This is a much more specific and common business requirement. By refining the
--- objective, we can write a significantly more efficient query.
---
--- Key Improvements:
---
--- a) Replaced LEFT JOIN with INNER JOIN:
---    Since we are only interested in bookings that have been paid, we can use an
---    `INNER JOIN` on the `Payments` table. This is far more efficient as it allows
---    the database to immediately discard any bookings that don't have a
---    corresponding payment record, drastically reducing the size of the data set
---    early in the execution plan.
---
--- b) Added a specific WHERE clause:
---    Filtering with `WHERE b.status = 'confirmed'` provides a clear condition for the
---    query planner. It can use an index on the `status` column (if one existed)
---    or at least filter the `Bookings` table before performing expensive joins,
---    again reducing the working data set.
+    Key Optimizations
+LEFT JOIN Replaced with INNER JOIN: By using INNER JOIN with the Payments table, we instruct the database to only consider bookings that have a matching payment, immediately reducing the working data set.
+Specific WHERE and AND Clauses Added: The multi-condition filter (WHERE b.status = 'confirmed' AND p.price_per_night > 100.00) is extremely powerful. It allows the database to use indexes on status and price_per_night to discard a huge number of irrelevant rows at the very beginning of the process, before any expensive joins are performed.
