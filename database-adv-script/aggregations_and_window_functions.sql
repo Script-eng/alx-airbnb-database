@@ -1,5 +1,5 @@
 -- =============================================
--- SQL Analysis Queries
+-- SQL Analysis Queries (Corrected)
 -- This file contains examples using aggregation and window functions.
 -- =============================================
 
@@ -33,20 +33,23 @@ ORDER BY
 
 
 -- --------------------------------------------------------------------
--- 2. Window Function (RANK)
+-- 2. Window Functions (ROW_NUMBER and RANK)
 -- --------------------------------------------------------------------
 -- Objective: Rank properties based on the total number of bookings they have received.
 --
 -- Explanation:
 -- This query first uses a Common Table Expression (CTE) named 'PropertyBookingCounts'
--- to calculate the number of bookings for each property. A LEFT JOIN is used
--- to include properties with zero bookings.
+-- to calculate the number of bookings for each property.
 --
--- The main query then selects from this CTE and applies the RANK() window function.
--- RANK() assigns a rank to each property based on its 'booking_count'.
--- The 'OVER (ORDER BY booking_count DESC)' clause specifies that the ranking should be
--- in descending order of booking counts. Properties with the same number of bookings
--- will receive the same rank.
+-- The main query then applies three different window functions to show their behavior:
+-- - ROW_NUMBER(): Assigns a unique, sequential number to each row (e.g., 1, 2, 3).
+-- - RANK(): Assigns a rank based on the value. If two properties have the same
+--           booking_count, they get the same rank, and the next rank is skipped
+--           (e.g., 1, 2, 2, 4).
+-- - DENSE_RANK(): Similar to RANK(), but does not skip ranks after a tie
+--                 (e.g., 1, 2, 2, 3).
+--
+-- The 'OVER (ORDER BY booking_count DESC)' clause defines the window for the functions.
 -- --------------------------------------------------------------------
 
 WITH PropertyBookingCounts AS (
@@ -66,7 +69,9 @@ SELECT
     name,
     location,
     booking_count,
-    RANK() OVER (ORDER BY booking_count DESC) AS property_rank
+    ROW_NUMBER() OVER (ORDER BY booking_count DESC) AS row_num,
+    RANK() OVER (ORDER BY booking_count DESC) AS property_rank,
+    DENSE_RANK() OVER (ORDER BY booking_count DESC) AS property_dense_rank
 FROM
     PropertyBookingCounts
 ORDER BY
